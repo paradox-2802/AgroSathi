@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Chatbot from "./pages/Chatbot";
@@ -20,7 +20,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/admin/upload" element={<AdminUpload />} />
+        <Route
+          path="/admin/upload"
+          element={
+            <ProtectedRoute>
+              <AdminUpload />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

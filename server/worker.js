@@ -28,9 +28,7 @@ const worker = new Worker(
     }
 
     const fileBuffer = fs.readFileSync(path);
-
     const loader = new PDFLoader(new Blob([fileBuffer]), { splitPages: true });
-
     const docs = await loader.load();
 
     const splitter = new RecursiveCharacterTextSplitter({
@@ -55,20 +53,20 @@ const worker = new Worker(
       await vectorStore.addDocuments(enrichedDocs.slice(i, i + batchSize));
     }
 
-    return { chunks: enrichedDocs.length };
+    try {
+      fs.unlinkSync(path);
+    } catch {}
+
+    return { chunks: enrichedDocs.length, filename };
   },
   {
-    concurrency: 5,
+    concurrency: 2,
     connection: {
       host: process.env.REDIS_HOST || "localhost",
       port: Number(process.env.REDIS_PORT || 6379),
     },
   }
 );
-
-worker.on("failed", (job, err) => {
-  console.error(`Job ${job?.id} failed:`, err.message);
-});
 
 process.on("SIGINT", async () => {
   await worker.close();

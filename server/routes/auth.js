@@ -33,8 +33,7 @@ router.post("/signup", async (req, res) => {
         email: user.email,
       },
     });
-  } catch (err) {
-    console.error(err);
+  } catch {
     res.status(500).json({ error: "Signup failed" });
   }
 });
@@ -69,8 +68,7 @@ router.post("/login", async (req, res) => {
         email: user.email,
       },
     });
-  } catch (err) {
-    console.error(err);
+  } catch {
     res.status(500).json({ error: "Login failed" });
   }
 });
