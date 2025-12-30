@@ -13,8 +13,9 @@ import {
   LogOut,
   Mic,
   MicOff,
-  Sparkles,
   ChevronDown,
+  Sun,
+  Moon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { authFetch } from "../utils/api";
@@ -30,6 +31,7 @@ export default function Chatbot() {
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [showSources, setShowSources] = useState({});
+  const [darkMode, setDarkMode] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -294,7 +296,13 @@ export default function Chatbot() {
   const currentMessages = chats[currentChatId] || [];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 overflow-hidden">
+    <div
+      className={`flex h-screen overflow-hidden ${
+        darkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+          : "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50"
+      }`}
+    >
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -303,7 +311,11 @@ export default function Chatbot() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/80 backdrop-blur-xl border-r border-green-200
+        className={`fixed inset-y-0 left-0 z-50 w-72 ${
+          darkMode ? "bg-gray-800/80" : "bg-white/80"
+        } backdrop-blur-xl ${
+          darkMode ? "border-gray-700" : "border-green-200"
+        } border-r
         flex flex-col shadow-2xl transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         lg:relative lg:translate-x-0 lg:flex`}
@@ -346,7 +358,11 @@ export default function Chatbot() {
                 }}
                 className={`group flex justify-between items-center gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all ${
                   c.id === currentChatId
-                    ? "bg-gradient-to-r from-green-100 to-emerald-100 shadow-md"
+                    ? darkMode
+                      ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-md"
+                      : "bg-gradient-to-r from-green-100 to-emerald-100 shadow-md"
+                    : darkMode
+                    ? "hover:bg-gray-700/60"
                     : "hover:bg-white/60"
                 }`}
               >
@@ -354,14 +370,18 @@ export default function Chatbot() {
                   <MessageSquare
                     className={`w-4 h-4 flex-shrink-0 ${
                       c.id === currentChatId
-                        ? "text-green-700"
+                        ? darkMode
+                          ? "text-green-400"
+                          : "text-green-700"
+                        : darkMode
+                        ? "text-green-400"
                         : "text-green-600"
                     }`}
                   />
                   <span
                     className={`truncate text-sm ${
-                      c.id === currentChatId ? "font-medium" : ""
-                    }`}
+                      darkMode ? "text-gray-200" : ""
+                    } ${c.id === currentChatId ? "font-medium" : ""}`}
                   >
                     {c.title}
                   </span>
@@ -378,7 +398,11 @@ export default function Chatbot() {
           </div>
         </div>
 
-        <div className="p-4 border-t border-green-200">
+        <div
+          className={`p-4 border-t ${
+            darkMode ? "border-gray-700" : "border-green-200"
+          }`}
+        >
           <button
             onClick={logout}
             className="flex gap-2 items-center justify-center text-red-600 text-sm hover:text-red-700 transition font-medium w-full px-4 py-3 rounded-lg hover:bg-red-50 border border-red-200"
@@ -389,20 +413,48 @@ export default function Chatbot() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white/80 backdrop-blur-xl border-b border-green-200 p-4 flex gap-3 items-center shadow-sm">
+        <header
+          className={`${
+            darkMode
+              ? "bg-gray-800/80 border-gray-700"
+              : "bg-white/80 border-green-200"
+          } backdrop-blur-xl border-b p-4 flex gap-3 items-center shadow-sm`}
+        >
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hover:bg-green-100 p-2 rounded-lg transition lg:hidden"
+            className={`${
+              darkMode ? "hover:bg-gray-700" : "hover:bg-green-100"
+            } p-2 rounded-lg transition lg:hidden`}
           >
-            <Menu className="w-6 h-6 text-green-700" />
+            <Menu
+              className={`w-6 h-6 ${
+                darkMode ? "text-green-400" : "text-green-700"
+              }`}
+            />
           </button>
-          <div className="flex items-center gap-2 text-green-700">
+          <div
+            className={`flex items-center gap-2 ${
+              darkMode ? "text-green-400" : "text-green-700"
+            }`}
+          >
             <Leaf className="w-6 h-6" />
             <span className="font-bold text-lg">KisanAi</span>
           </div>
-          <div className="ml-auto flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
-            <Sparkles className="w-3 h-3" />
-            <span className="hidden sm:inline">AI Powered</span>
+          <div className="ml-auto">
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition ${
+                darkMode
+                  ? "bg-gray-700 text-yellow-400 hover:bg-gray-600"
+                  : "bg-green-50 text-green-600 hover:bg-green-100"
+              }`}
+            >
+              {darkMode ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </header>
 
@@ -413,10 +465,18 @@ export default function Chatbot() {
                 <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Leaf className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                <h2
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-gray-100" : "text-gray-800"
+                  } mb-3`}
+                >
                   Welcome to KisanAi
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p
+                  className={`${
+                    darkMode ? "text-gray-300" : "text-gray-600"
+                  } mb-6`}
+                >
                   Your intelligent agriculture assistant. Ask me anything about
                   farming, crops, soil, irrigation, or pest management.
                 </p>
@@ -429,7 +489,11 @@ export default function Chatbot() {
                     <button
                       key={i}
                       onClick={() => setInput(q)}
-                      className="text-sm text-left px-4 py-3 bg-white hover:bg-green-50 rounded-xl border border-green-200 transition text-gray-700 hover:border-green-400"
+                      className={`text-sm text-left px-4 py-3 rounded-xl border transition ${
+                        darkMode
+                          ? "bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-200 hover:border-green-500"
+                          : "bg-white hover:bg-green-50 border-green-200 text-gray-700 hover:border-green-400"
+                      }`}
                     >
                       {q}
                     </button>
@@ -454,6 +518,8 @@ export default function Chatbot() {
                   className={`px-5 py-4 rounded-2xl ${
                     m.role === "user"
                       ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg"
+                      : darkMode
+                      ? "bg-gray-800 border border-gray-700 shadow-md text-gray-100"
                       : "bg-white border border-green-200 shadow-md"
                   }`}
                 >
@@ -504,9 +570,17 @@ export default function Chatbot() {
                           {m.sources.map((s, idx) => (
                             <div
                               key={idx}
-                              className="text-xs bg-green-50 border border-green-200 rounded-lg p-3"
+                              className={`text-xs rounded-lg p-3 ${
+                                darkMode
+                                  ? "bg-gray-800 border border-gray-700"
+                                  : "bg-green-50 border border-green-200"
+                              }`}
                             >
-                              <p className="text-gray-700 line-clamp-2">
+                              <p
+                                className={`${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                } line-clamp-2`}
+                              >
                                 {s.preview}...
                               </p>
                             </div>
@@ -528,7 +602,13 @@ export default function Chatbot() {
               <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl flex justify-center items-center flex-shrink-0 shadow-lg">
                 <Bot className="w-5 h-5 text-white" />
               </div>
-              <div className="bg-white border border-green-200 rounded-2xl px-5 py-4 shadow-md">
+              <div
+                className={`rounded-2xl px-5 py-4 shadow-md ${
+                  darkMode
+                    ? "bg-gray-800 border border-gray-700"
+                    : "bg-white border border-green-200"
+                }`}
+              >
                 <div className="flex gap-2 items-center text-green-600">
                   <Loader2 className="animate-spin w-5 h-5" />
                   <span className="text-sm">Analyzing your question...</span>
@@ -540,7 +620,13 @@ export default function Chatbot() {
           <div ref={messagesEndRef} />
         </div>
 
-        <footer className="border-t border-green-200 bg-white/80 backdrop-blur-xl p-4 shadow-lg">
+        <footer
+          className={`border-t ${
+            darkMode
+              ? "border-gray-700 bg-gray-800/80"
+              : "border-green-200 bg-white/80"
+          } backdrop-blur-xl p-4 shadow-lg`}
+        >
           <div className="max-w-4xl mx-auto">
             {isListening && (
               <div className="mb-3 flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
@@ -570,7 +656,11 @@ export default function Chatbot() {
                   e.key === "Enter" && !e.shiftKey && handleSubmit()
                 }
                 placeholder="Ask about crops, soil, irrigation..."
-                className="flex-1 border-2 border-green-200 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white shadow-sm"
+                className={`flex-1 border-2 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm ${
+                  darkMode
+                    ? "bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
+                    : "bg-white border-green-200"
+                }`}
                 disabled={isListening}
               />
 
@@ -579,6 +669,8 @@ export default function Chatbot() {
                 className={`px-5 rounded-2xl transition shadow-lg font-medium ${
                   isListening
                     ? "bg-red-600 text-white"
+                    : darkMode
+                    ? "bg-gray-700 border-2 border-gray-600 text-green-400 hover:bg-gray-600"
                     : "bg-white border-2 border-green-200 text-green-600 hover:bg-green-50"
                 }`}
                 title={isListening ? "Stop listening" : "Start voice search"}
@@ -598,7 +690,11 @@ export default function Chatbot() {
                 <Send className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-center text-gray-500 mt-3">
+            <p
+              className={`text-xs text-center ${
+                darkMode ? "text-gray-400" : "text-gray-500"
+              } mt-3`}
+            >
               AI can make mistakes. Verify important information.
             </p>
           </div>
@@ -611,7 +707,7 @@ export default function Chatbot() {
     }
     
     ::-webkit-scrollbar-track {
-      background: #dcfce7;
+      background: ${darkMode ? "#1f2937" : "#dcfce7"};
       border-radius: 4px;
     }
     
@@ -627,7 +723,7 @@ export default function Chatbot() {
     /* For Firefox */
     * {
       scrollbar-width: thin;
-      scrollbar-color: #16a34a #dcfce7;
+      scrollbar-color: #16a34a ${darkMode ? "#1f2937" : "#dcfce7"};
     }
     
     @keyframes pulse {

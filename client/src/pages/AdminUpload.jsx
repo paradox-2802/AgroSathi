@@ -19,6 +19,15 @@ export default function AdminUpload() {
   const uploadPdf = async () => {
     if (!file) return;
 
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      setStatus({
+        type: "error",
+        message: "Admin session expired. Please login again.",
+      });
+      return;
+    }
+
     setLoading(true);
     setStatus(null);
 
@@ -28,11 +37,13 @@ export default function AdminUpload() {
     try {
       const res = await fetch(`${API_BASE}/upload/pdf`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || "Upload failed");
 
       setStatus({
@@ -110,9 +121,9 @@ export default function AdminUpload() {
             }`}
           >
             {status.type === "success" ? (
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5" />
             ) : (
-              <XCircle className="w-5 h-5 flex-shrink-0" />
+              <XCircle className="w-5 h-5" />
             )}
             <span className="text-sm">{status.message}</span>
           </div>

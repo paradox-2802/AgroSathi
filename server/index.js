@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import multer from "multer";
 import { Queue } from "bullmq";
 import OpenAI from "openai";
+import jwt from "jsonwebtoken";
 
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { QdrantVectorStore } from "@langchain/qdrant";
@@ -15,6 +16,7 @@ import { QdrantVectorStore } from "@langchain/qdrant";
 import Chat from "./models/Chat.js";
 import authRoutes from "./routes/auth.js";
 import { authMiddleware } from "./middleware/auth.js";
+import { adminMiddleware } from "./middleware/auth.js";
 
 const app = express();
 app.use(cors());
@@ -95,17 +97,39 @@ Rewrite it as a complete standalone question.
   return res.choices[0].message.content.trim();
 }
 
-app.post("/upload/pdf", upload.single("pdf"), async (req, res) => {
-  try {
-    await queue.add("file-ready", {
-      filename: req.file.originalname,
-      path: req.file.path,
-    });
-    res.json({ message: "PDF uploaded" });
-  } catch {
-    res.status(500).json({ error: "Upload failed" });
+app.post("/admin/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (
+    username !== process.env.ADMIN_USERNAME ||
+    password !== process.env.ADMIN_PASSWORD
+  ) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
+
+  const token = jwt.sign({ role: "admin" }, process.env.ADMIN_JWT_SECRET, {
+    expiresIn: "12h",
+  });
+
+  res.json({ token });
 });
+
+app.post(
+  "/upload/pdf",
+  adminMiddleware,
+  upload.single("pdf"),
+  async (req, res) => {
+    try {
+      await queue.add("file-ready", {
+        filename: req.file.originalname,
+        path: req.file.path,
+      });
+      res.json({ message: "PDF uploaded" });
+    } catch {
+      res.status(500).json({ error: "Upload failed" });
+    }
+  }
+);
 
 app.post("/chat/create", authMiddleware, async (req, res) => {
   try {
