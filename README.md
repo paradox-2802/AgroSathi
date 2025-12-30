@@ -105,6 +105,9 @@ The platform supports text and voice-based queries, context-aware multi-turn con
         HUGGINGFACE_API_KEY=your_key
         A4F_API_KEY=your_key
         JWT_SECRET=your_secret
+       ADMIN_USERNAME=sample@gmail.com
+       ADMIN_PASSWORD=your_password
+       ADMIN_JWT_SECRET=your_secret
 
 - **Frontend (.env)**
   
