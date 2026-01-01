@@ -88,13 +88,72 @@ Rewrite it as a complete standalone question.
 `;
 
   const res = await a4fClient.chat.completions.create({
-    model: "provider-8/gemini-2.0-flash",
+    model: "provider-6/llama-3.1-8b-instant",
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
     max_tokens: 80,
   });
 
   return res.choices[0].message.content.trim();
+}
+
+async function translateToEnglish(text) {
+  try {
+    const res = await fetch(`${process.env.LIBRETRANSLATE_URL || "http://localhost:5000"}/translate`, {
+      method: "POST",
+      body: JSON.stringify({
+        q: text,
+        source: "auto",
+        target: "en",
+        format: "text",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const data = await res.json();
+    return data.translatedText || text;
+  } catch (error) {
+    return text;
+  }
+}
+
+
+async function translateFromEnglish(text, targetLang) {
+  if (!targetLang || targetLang === "English") return text;
+
+  const langMap = {
+    "Hindi": "hi",
+    "Bengali": "bn",
+    "Tamil": "ta",
+    "Telugu": "te",
+    "Marathi": "mr",
+    "Kannada": "kn",
+    "Malayalam": "ml",
+    "Gujarati": "gu",
+    "Punjabi": "pa",
+    "Urdu": "ur"
+  };
+
+  const target = langMap[targetLang];
+  if (!target) return text;
+
+  try {
+    const res = await fetch(`${process.env.LIBRETRANSLATE_URL || "http://localhost:5000"}/translate`, {
+      method: "POST",
+      body: JSON.stringify({
+        q: text,
+        source: "en",
+        target: target,
+        format: "text",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const data = await res.json();
+    return data.translatedText || text;
+  } catch (error) {
+    return text;
+  }
 }
 
 app.post("/admin/login", (req, res) => {
@@ -204,7 +263,7 @@ app.get("/chat/history/:chatId", authMiddleware, async (req, res) => {
 
 app.post("/chat", authMiddleware, async (req, res) => {
   try {
-    const { message, chatId } = req.body;
+    const { message, chatId, language } = req.body;
     const userId = req.user?.id;
 
     if (!message || !chatId || !userId) {
@@ -230,6 +289,13 @@ app.post("/chat", authMiddleware, async (req, res) => {
       .join("\n");
 
     let retrievalQuery = message;
+    if (language && language !== "English") {
+      try {
+        retrievalQuery = await translateToEnglish(message);
+      } catch {
+        retrievalQuery = message;
+      }
+    }
 
     if (message.split(" ").length < 6) {
       try {
@@ -242,11 +308,14 @@ app.post("/chat", authMiddleware, async (req, res) => {
     const docs = await retriever.invoke(retrievalQuery);
 
     if (!docs.length) {
-      const fallback = "I don't know based on the provided documents.";
+      let fallback = "I don't know based on the provided documents.";
+      if (language && language !== "English") {
+        fallback = await translateFromEnglish(fallback, language);
+      }
       chat.messages.push({ role: "assistant", content: fallback });
       await chat.save();
 
-      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
@@ -265,19 +334,20 @@ app.post("/chat", authMiddleware, async (req, res) => {
       .map((d, i) => `Source ${i + 1}:\n${d.pageContent}`)
       .join("\n\n");
 
-    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
     const stream = await a4fClient.chat.completions.create({
-      model: "provider-8/gemini-2.0-flash",
+      model: "provider-5/gemma-3-27b-it-fast",
       messages: [
         {
           role: "system",
           content: `You are an Agriculture Assistant.
 Answer ONLY from the context below.
-If not found, say:
-"I don't know based on the provided documents."
+If not found, simply state that you don't know based on the provided documents in ${language || "English"}.
+
+Reply in ${language || "English"}. Do NOT output English if the target language is different.
 
 Context:
 ${context}`,

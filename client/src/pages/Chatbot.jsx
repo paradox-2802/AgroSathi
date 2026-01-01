@@ -21,10 +21,14 @@ import {
   Droplets,
   Thermometer,
   MapPin,
+  Globe,
+  Volume2,
+  Square,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { authFetch } from "../utils/api";
 import { logout } from "../utils/auth";
+import { speak, stopSpeaking } from "../utils/tts";
 
 export default function Chatbot() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -41,7 +45,29 @@ export default function Chatbot() {
   const [darkMode, setDarkMode] = useState(false);
   const [weather, setWeather] = useState(null);
   const [showWeather, setShowWeather] = useState(false);
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [showDailyForecast, setShowDailyForecast] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [language, setLanguage] = useState("English");
+  const [playingMessageId, setPlayingMessageId] = useState(null);
+
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
+
+  const LANGUAGES = {
+    English: "en-IN",
+    Hindi: "hi-IN",
+    Bengali: "bn-IN",
+    Tamil: "ta-IN",
+    Telugu: "te-IN",
+    Marathi: "mr-IN",
+    Kannada: "kn-IN",
+    Malayalam: "ml-IN",
+    Gujarati: "gu-IN",
+    Punjabi: "pa-IN",
+    Urdu: "ur-IN",
+  };
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const skipHistoryFetchRef = useRef(null);
@@ -53,7 +79,7 @@ export default function Chatbot() {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = "en-IN";
+      recognitionRef.current.lang = LANGUAGES[language];
 
       recognitionRef.current.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
@@ -82,7 +108,7 @@ export default function Chatbot() {
         recognitionRef.current.abort();
       }
     };
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     authFetch("/chat/list")
@@ -269,7 +295,7 @@ export default function Chatbot() {
       const res = await authFetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId, message: msg }),
+        body: JSON.stringify({ chatId, message: msg, language }),
       });
 
       if (!res.ok) {
@@ -281,23 +307,25 @@ export default function Chatbot() {
       let accumulatedContent = "";
       let sources = [];
       let title = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
+          if (line.trim().startsWith("data: ")) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(line.trim().slice(6));
 
               if (data.content) {
                 accumulatedContent += data.content;
-                await new Promise((resolve) => setTimeout(resolve, 30));
+                await new Promise((resolve) => setTimeout(resolve, 10));
 
                 setChats((p) => {
                   const messages = [...(p[chatId] || [])];
@@ -368,13 +396,12 @@ export default function Chatbot() {
         try {
           const { latitude, longitude } = position.coords;
           const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=precipitation_sum,precipitation_probability_max&timezone=auto`
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=auto`
           );
           const data = await response.json();
           const current = data.current;
           const daily = data.daily;
 
-          // Map WMO codes to text
           const getWeatherDesc = (code) => {
             if (code === 0) return "Clear sky";
             if (code >= 1 && code <= 3) return "Partly cloudy";
@@ -394,9 +421,16 @@ export default function Chatbot() {
             code: current.weather_code,
             rainChance: daily.precipitation_probability_max[0],
             rainSum: daily.precipitation_sum[0],
+            daily: daily.time.map((t, i) => ({
+              date: new Date(t).toLocaleDateString("en-IN", { weekday: 'short', month: 'short', day: 'numeric' }),
+              maxTemp: daily.temperature_2m_max[i],
+              minTemp: daily.temperature_2m_min[i],
+              code: daily.weather_code[i],
+              desc: getWeatherDesc(daily.weather_code[i]),
+              rainChance: daily.precipitation_probability_max[i],
+            })),
           });
         } catch (error) {
-          console.error("Error fetching weather:", error);
           alert("Failed to fetch weather data.");
         } finally {
           setWeatherLoading(false);
@@ -510,10 +544,70 @@ export default function Chatbot() {
                 Failed to load weather data
               </div>
             )}
+
+            {weather && weather.daily && (
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  onClick={() => setShowDailyForecast(true)}
+                  className="w-full py-2 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 transition dark:bg-gray-700 dark:text-blue-400 dark:hover:bg-gray-600"
+                >
+                  View 7-Day Forecast
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      )
-      }
+      )}
+
+      {showDailyForecast && weather && weather.daily && (
+        <div
+          onClick={() => setShowDailyForecast(false)}
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"
+              } rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in fade-in zoom-in duration-200 border ${darkMode ? "border-gray-700" : "border-gray-100"
+              }`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Cloud className="w-6 h-6 text-blue-500" /> 7-Day Forecast
+              </h3>
+              <button
+                onClick={() => setShowDailyForecast(false)}
+                className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {weather.daily.map((day, idx) => (
+                <div key={idx} className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? "bg-gray-700/50" : "bg-blue-50"}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 text-sm font-bold opacity-70">{idx === 0 ? "Today" : day.date.split(',')[0]}</div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{day.date}</span>
+                      <span className="text-xs opacity-60">{day.desc}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    <div className="flex flex-col items-end">
+                      <span className="font-bold text-lg">{Math.round(day.maxTemp)}°</span>
+                      <span className="text-xs opacity-60">{Math.round(day.minTemp)}°</span>
+                    </div>
+                    <div className="flex flex-col items-end w-12">
+                      <span className="text-xs font-bold text-blue-500">{day.rainChance}%</span>
+                      <CloudRain className="w-3 h-3 text-blue-500 opacity-60" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <aside
         className={`fixed inset-y-0 left-0 z-50 ${darkMode ? "bg-gray-800/80" : "bg-white/80"
@@ -566,10 +660,10 @@ export default function Chatbot() {
                   className={`group flex justify-between items-center gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all ${c.id === currentChatId
                     ? darkMode
                       ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-md"
-                      : "bg-gradient-to-r from-green-100 to-emerald-100 shadow-md"
+                      : "bg-gradient-to-r from-green-500 to-emerald-500 shadow-md text-white"
                     : darkMode
                       ? "hover:bg-gray-700/60"
-                      : "hover:bg-white/60"
+                      : "hover:bg-green-50"
                     }`}
                 >
                   <div className="flex gap-3 items-center truncate flex-1 min-w-0">
@@ -577,7 +671,7 @@ export default function Chatbot() {
                       className={`w-4 h-4 flex-shrink-0 ${c.id === currentChatId
                         ? darkMode
                           ? "text-green-400"
-                          : "text-green-700"
+                          : "text-white"
                         : darkMode
                           ? "text-green-400"
                           : "text-green-600"
@@ -717,7 +811,7 @@ export default function Chatbot() {
             >
               {m.role === "assistant" && (
                 <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl flex justify-center items-center flex-shrink-0 shadow-lg">
-                  <Bot className="w-5 h-5 text-white" />
+                  <Leaf className="w-5 h-5 text-white" />
                 </div>
               )}
               <div className="flex flex-col gap-2 max-w-xl sm:max-w-2xl">
@@ -748,30 +842,37 @@ export default function Chatbot() {
                       ></div>
                     </div>
                   ) : (
-                    <ReactMarkdown
-                      components={{
-                        p: ({ node, ...props }) => (
-                          <p className="my-2" {...props} />
-                        ),
-                        ul: ({ node, ...props }) => (
-                          <ul className="my-2 pl-6 list-disc" {...props} />
-                        ),
-                        ol: ({ node, ...props }) => (
-                          <ol className="my-2 pl-6 list-decimal" {...props} />
-                        ),
-                        li: ({ node, ...props }) => (
-                          <li className="my-1" {...props} />
-                        ),
-                        strong: ({ node, ...props }) => (
-                          <strong className="font-semibold" {...props} />
-                        ),
-                        em: ({ node, ...props }) => (
-                          <em className="italic" {...props} />
-                        ),
+                    <div
+                      style={{
+                        fontFamily:
+                          '"Nirmala UI", "Noto Sans Bengali", "Noto Sans Devanagari", "Inter", sans-serif',
                       }}
                     >
-                      {m.content}
-                    </ReactMarkdown>
+                      <ReactMarkdown
+                        components={{
+                          p: ({ node, ...props }) => (
+                            <p className="my-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="my-2 pl-6 list-disc" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="my-2 pl-6 list-decimal" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="my-1" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-semibold" {...props} />
+                          ),
+                          em: ({ node, ...props }) => (
+                            <em className="italic" {...props} />
+                          ),
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
                 {m.role === "assistant" &&
@@ -812,6 +913,40 @@ export default function Chatbot() {
                       )}
                     </div>
                   )}
+
+
+                {m.role === "assistant" && m.content && !isLoading && (
+                  <button
+                    onClick={() => {
+                      if (playingMessageId === i) {
+                        stopSpeaking();
+                        setPlayingMessageId(null);
+                      } else {
+                        setPlayingMessageId(i);
+                        speak(m.content, () => setPlayingMessageId(null));
+                      }
+                    }}
+                    className={`ml-auto -mt-2 p-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium ${playingMessageId === i
+                      ? "text-red-500 bg-red-50 hover:bg-red-100"
+                      : darkMode
+                        ? "text-gray-400 hover:text-green-400 hover:bg-gray-700"
+                        : "text-gray-400 hover:text-green-600 hover:bg-green-50"
+                      }`}
+                    title={playingMessageId === i ? "Stop listening" : "Listen to response"}
+                  >
+                    {playingMessageId === i ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-current" />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-4 h-4" />
+                        <span>Listen</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
               {m.role === "user" && (
                 <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-2xl flex justify-center items-center flex-shrink-0 shadow-lg">
@@ -850,24 +985,78 @@ export default function Chatbot() {
                 </span>
               </div>
             )}
-            <div className="flex gap-3">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && !e.shiftKey && handleSubmit()
-                }
-                placeholder="Ask about crops, soil, irrigation..."
-                className={`flex-1 border-2 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm ${darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
-                  : "bg-white border-green-200"
-                  }`}
-                disabled={isListening}
-              />
+            <div className="flex gap-1.5 sm:gap-3">
+              <div className={`flex-1 flex items-center border-2 rounded-xl sm:rounded-2xl shadow-sm ${darkMode
+                ? "bg-gray-700 border-gray-600"
+                : "bg-white border-green-200"
+                }`}>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && !e.shiftKey && handleSubmit()
+                  }
+                  placeholder="Ask about crops..."
+                  className={`flex-1 min-w-0 bg-transparent px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-base focus:outline-none ${darkMode
+                    ? "text-gray-100 placeholder-gray-400"
+                    : "text-gray-800 placeholder-gray-400"
+                    }`}
+                  disabled={isListening}
+                />
+
+                <div className="relative flex items-center border-l border-gray-300 dark:border-gray-600">
+                  <button
+                    onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                    className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-3 py-2 text-xs sm:text-sm font-medium transition rounded-r-xl sm:rounded-r-2xl ${language !== "English"
+                      ? "text-black bg-gradient-to-r from-green-600 to-emerald-600"
+                      : darkMode
+                        ? "text-gray-300 hover:text-gray-100"
+                        : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    title="Select Language"
+                  >
+                    <Globe className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                    <span className="max-w-[45px] sm:max-w-[60px] truncate text-[10px] sm:text-xs">{language === "English" ? "EN" : language.slice(0, 3)}</span>
+                  </button>
+                  {showLanguageMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowLanguageMenu(false)}
+                      />
+                      <div
+                        className={`absolute bottom-full mb-2 right-0 w-32 sm:w-44 rounded-xl shadow-xl overflow-hidden py-1 z-50 ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-green-100"
+                          }`}
+                      >
+                        <div className="max-h-48 sm:max-h-60 overflow-y-auto">
+                          {Object.keys(LANGUAGES).map((l) => (
+                            <button
+                              key={l}
+                              onClick={() => {
+                                setLanguage(l);
+                                setShowLanguageMenu(false);
+                              }}
+                              className={`block w-full text-left px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm transition ${language === l
+                                ? "text-black bg-gradient-to-r from-green-600 to-emerald-600 font-medium"
+                                : darkMode
+                                  ? "text-gray-200 hover:bg-gray-700"
+                                  : "text-gray-700 hover:bg-green-50"
+                                }`}
+                            >
+                              {l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
 
               <button
                 onClick={toggleVoiceInput}
-                className={`px-5 rounded-2xl transition shadow-lg font-medium ${isListening
+                className={`px-2 sm:px-5 py-2 rounded-xl sm:rounded-2xl transition shadow-lg font-medium ${isListening
                   ? "bg-red-600 text-white"
                   : darkMode
                     ? "bg-gray-700 border-2 border-gray-600 text-green-400 hover:bg-gray-600"
@@ -876,18 +1065,21 @@ export default function Chatbot() {
                 title={isListening ? "Stop listening" : "Start voice search"}
               >
                 {isListening ? (
-                  <MicOff className="w-5 h-5" />
+                  <MicOff className="w-4 sm:w-5 h-4 sm:h-5" />
                 ) : (
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-4 sm:w-5 h-4 sm:h-5" />
                 )}
               </button>
 
               <button
                 onClick={handleSubmit}
                 disabled={!input.trim() || isLoading}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 rounded-2xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+                className={`px-3 sm:px-8 py-2 rounded-xl sm:rounded-2xl transition shadow-lg font-medium text-xs sm:text-sm ${isLoading || !input.trim()
+                  ? "bg-gray-400 cursor-not-allowed text-gray-200"
+                  : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800"
+                  }`}
               >
-                <Send className="w-5 h-5" />
+                {isLoading ? "..." : "Ask"}
               </button>
             </div>
             <p
@@ -898,7 +1090,7 @@ export default function Chatbot() {
             </p>
           </div>
         </footer>
-      </main>
+      </main >
 
       <style>{`
     ::-webkit-scrollbar {
@@ -919,7 +1111,6 @@ export default function Chatbot() {
       background: #15803d;
     }
     
-    /* For Firefox */
     * {
       scrollbar-width: thin;
       scrollbar-color: #16a34a ${darkMode ? "#1f2937" : "#dcfce7"};
@@ -930,6 +1121,6 @@ export default function Chatbot() {
       50% { height: 16px; }
     }
   `}</style>
-    </div>
+    </div >
   );
 }
