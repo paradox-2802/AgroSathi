@@ -31,6 +31,7 @@ import {
   Sparkles,
   Sprout,
   CloudOff as CloudOffIcon,
+  PanelLeftClose,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { authFetch } from "../utils/api";
@@ -685,9 +686,9 @@ export default function Chatbot() {
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="lg:hidden ml-auto p-2 rounded-xl active:scale-95 transition"
+                  className="ml-auto p-2 rounded-xl active:scale-95 transition"
                 >
-                  <X className="w-5 h-5" />
+                  <PanelLeftClose className="w-5 h-5" />
                 </button>
               </div>
 
@@ -777,16 +778,18 @@ export default function Chatbot() {
             : "bg-white/40 border-white/40"
             } backdrop-blur-xl border-b p-4 flex gap-3 items-center sticky top-0 z-20 transition-all`}
         >
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`${darkMode ? "hover:bg-gray-800" : "hover:bg-white/50"
-              } p-2 rounded-xl transition-colors`}
-          >
-            <Menu
-              className={`w-6 h-6 ${darkMode ? "text-green-400" : "text-green-700"
-                }`}
-            />
-          </button>
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`${darkMode ? "hover:bg-gray-800" : "hover:bg-white/50"
+                } p-2 rounded-xl transition-colors`}
+            >
+              <Menu
+                className={`w-6 h-6 ${darkMode ? "text-green-400" : "text-green-700"
+                  }`}
+              />
+            </button>
+          )}
           <div
             className={`flex items-center gap-2 ${darkMode ? "text-green-400" : "text-green-700"
               }`}
