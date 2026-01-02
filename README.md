@@ -98,16 +98,28 @@ The platform supports text and voice-based queries, context-aware multi-turn con
 
 - **Backend (.env)**
 
-        MONGODB_URI=mongodb://localhost:27017/kisanai
-        QDRANT_URL=http://localhost:6333
-        REDIS_HOST=localhost
-        REDIS_PORT=6379
-        HUGGINGFACE_API_KEY=your_key
-        A4F_API_KEY=your_key
-        JWT_SECRET=your_secret
-       ADMIN_USERNAME=sample@gmail.com
-       ADMIN_PASSWORD=your_password
-       ADMIN_JWT_SECRET=your_secret
+       # API Keys
+      HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+      A4F_API_KEY=your_a4f_api_key_here
+      
+      # Database URLs
+      QDRANT_URL=your_qdrant_url_here
+      MONGODB_URI=your_mongodb_uri_here
+      
+      # Secrets
+      JWT_SECRET=your_jwt_secret_here
+      ADMIN_JWT_SECRET=your_admin_jwt_secret_here
+      
+      # Redis Configuration
+      REDIS_HOST=your_redis_host_here
+      REDIS_PORT=your_redis_port_here
+      
+      # Admin Credentials
+      ADMIN_USERNAME=your_admin_email_here
+      ADMIN_PASSWORD=your_admin_password_here
+
+# Server Configuration
+PORT=8000
 
 - **Frontend (.env)**
   
