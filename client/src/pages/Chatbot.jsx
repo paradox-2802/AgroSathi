@@ -411,7 +411,7 @@ export default function Chatbot() {
 
               if (data.content) {
                 if (data.content.length > 10) {
-                  // Simulate typing for large chunks (e.g. from Crop Doctor)
+
                   const chars = data.content.split("");
                   for (const char of chars) {
                     accumulatedContent += char;
@@ -428,7 +428,7 @@ export default function Chatbot() {
                     });
                   }
                 } else {
-                  // Standard streaming behavior
+
                   accumulatedContent += data.content;
                   await new Promise((resolve) => setTimeout(resolve, 50));
 

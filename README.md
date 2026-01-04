@@ -1,6 +1,6 @@
-# 🌾 KisanAI — Agriculture Intelligence Platform (RAG)
+# 🌾 KisanAI — Agriculture Intelligence Platform
 
-**KisanAI** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices, strictly based on verified agricultural methods.
+**KisanAI** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices.
 
 The platform combines advanced LLMs for text-based queries with vision-language models for disease detection, offering a complete digital companion for modern farming.
 
@@ -12,7 +12,7 @@ The platform combines advanced LLMs for text-based queries with vision-language 
 -   **Document Grounding**: Ingests agricultural PDFs to provide answers strictly based on authoritative sources, reducing hallucinations.
 -   **Semantic Search**: Uses **Qdrant** and **HuggingFace** embeddings to find the most relevant context for every query.
 -   **Multi-Turn Conversations**: Remembers context from previous messages to handle follow-up questions naturally.
--   **Query Rewriting**: Automatically refines vague follow-up questions (e.g., "How much water does it need?") into standalone queries (e.g., "How much water does wheat need?") for better retrieval.
+-   **Query Rewriting**: Automatically refines vague follow-up questions into standalone queries for better retrieval.
 
 ### 🍃 **Pest & Disease Detection**
 -   **Visual Diagnosis**: Farmers can upload photos of crops to instantly identify diseases.
@@ -31,7 +31,7 @@ The platform combines advanced LLMs for text-based queries with vision-language 
     -   Persistent chat history stored in **MongoDB**.
     -   Separate history tracking for General Chat and Disease Detection.
     -   Ability to rename and delete conversations.
--   **Admin Dashboard**: secure capabilities for authorized personnel to upload and manage reference documents (PDFs).
+-   **Admin Dashboard**: Secure capabilities for authorized personnel to upload and manage reference documents (PDFs).
 
 ---
 
@@ -50,7 +50,7 @@ graph TD
     end
     
     subgraph AI Services
-        Server <-->|LLM & Vision| A4F["A4F / HuggingFace"]
+        Server <-->|LLM & Vision| HF["HuggingFace Inference"]
         Server <-->|Embeddings| HF_Embed["HuggingFace Embeddings"]
         Server <-->|Translation| Libre["LibreTranslate"]
     end
@@ -72,7 +72,7 @@ sequenceDiagram
     Server->>LLM: Rewrite as Standalone Query
     LLM-->>Server: Optimized Query
     Server->>VectorDB: Search Relevant Documents
-    VectorDB-->>Server: Retreived Context
+    VectorDB-->>Server: Retrieved Context
     Server->>LLM: Generate Answer (with Context)
     LLM-->>Server: English Response
     Server->>Translator: Translate to User Language
@@ -86,7 +86,7 @@ sequenceDiagram
 sequenceDiagram
     participant Farmer
     participant Server
-    participant Vision as Vision Model (Qwen 2.5)
+    participant Vision as Vision Model (Qwen 2.5 VL)
     
     Farmer->>Server: Upload Crop Image
     Server->>Vision: Analyze Image + Prompt
@@ -110,85 +110,136 @@ sequenceDiagram
 -   **Framework**: [Express.js](https://expressjs.com/)
 -   **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose)
 -   **Vector Database**: [Qdrant](https://qdrant.tech/)
--   **Queue System**: [BullMQ](https://docs.bullmq.io/) with [Redis](https://redis.io/) (for file processing)
+-   **Queue System**: [BullMQ](https://docs.bullmq.io/) with [Redis](https://redis.io/)
 -   **AI Framework**: [LangChain](https://js.langchain.com/)
 
 ### **AI & Models**
--   **Chat LLM**: **Gemma 2 27B** (via [A4F](https://a4f.co/))
--   **Vision Model**: **Qwen 2.5 VL** (via HuggingFace Inference)
+-   **Chat LLM**: **Qwen 2.5 72B Instruct** (via [HuggingFace Inference](https://huggingface.co/))
+-   **Vision Model**: **Qwen 2.5 VL 7B Instruct** (via HuggingFace Inference)
+-   **Query Rewriter**: **Meta-Llama 3.1 8B Instruct** (via HuggingFace Inference)
 -   **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`
--   **Query Rewriter**: **Gemma 2 27B**
 -   **Translation**: [LibreTranslate](https://libretranslate.com/)
 
 ---
 
-## 🐳 Running the Project
+## 🐳 Running the Project with Docker
 
 ### Prerequisites
 -   [Docker & Docker Compose](https://www.docker.com/)
--   [Node.js](https://nodejs.org/) (v18+)
--   [pnpm](https://pnpm.io/) (recommended) or npm
 
-### 1. Start Infrastructure Services
-Start Qdrant (Vector DB) and Redis (Queue/Cache):
+### Quick Start
+
+1. **Clone the repository**:
 ```bash
-docker-compose up -d
+git clone <repository-url>
+cd agricultural-chat-bot
 ```
 
-### 2. Backend Setup
-Navigate to the server directory and install dependencies:
-```bash
-cd server
-pnpm install
-```
-
-Start the background worker (handles PDF processing):
-```bash
-pnpm dev:worker
-```
-
-Start the API server:
-```bash
-pnpm dev
-```
-> Server runs at: `http://localhost:8000`
-
-### 3. Frontend Setup
-Navigate to the client directory and install dependencies:
-```bash
-cd client
-pnpm install
-pnpm run dev
-```
-> Frontend runs at: `http://localhost:5173`
-
----
-
-## ⚙️ Environment Variables
-
-Create a `.env` file in the `server` directory with the following:
-
+2. **Configure environment variables**:
+Create a `.env` file in the `server` directory:
 ```env
 # Database
 MONGODB_URI=mongodb://localhost:27017/kisanai
-QDRANT_URL=http://localhost:6333
-REDIS_HOST=localhost
+QDRANT_URL=http://qdrant:6333
+REDIS_HOST=valkey
 REDIS_PORT=6379
 
 # AI Services
-HUGGINGFACE_API_KEY=your_hf_key
-A4F_API_KEY=your_a4f_key
-LIBRETRANSLATE_URL=http://localhost:5000
+HUGGINGFACE_API_KEY=your_hf_key_here
+LIBRETRANSLATE_URL=http://libretranslate:5000
 
 # Auth & Admin
-JWT_SECRET=your_jwt_secret
-ADMIN_USERNAME=admin@kisan.ai
-ADMIN_PASSWORD=secure_password
-ADMIN_JWT_SECRET=your_admin_secret
+JWT_SECRET=your_jwt_secret_here
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=secure_password_here
+ADMIN_JWT_SECRET=your_admin_secret_here
 ```
 
-Create a `.env` file in the `client` directory:
-
-```env
-VITE_API_URL=http://localhost:8000
+3. **Start all services**:
+```bash
+docker-compose up --build
 ```
+
+This will start:
+- **Frontend** at `http://localhost:5173`
+- **Backend API** at `http://localhost:8000`
+- **Qdrant** (Vector DB) at `http://localhost:6333`
+- **Valkey** (Redis) at `http://localhost:6379`
+- **LibreTranslate** at `http://localhost:5000`
+
+4. **Access the application**:
+Open your browser and navigate to `http://localhost:5173`
+
+---
+
+## 🛠️ Development Mode
+
+The Docker setup includes **hot-reload** for both frontend and backend:
+- Edit files in `client/` or `server/` and see changes instantly
+- No need to rebuild containers for code changes
+
+To view logs:
+```bash
+docker-compose logs -f backend
+docker-compose logs -f worker
+docker-compose logs -f client
+```
+
+To stop all services:
+```bash
+docker-compose down
+```
+
+---
+
+## 📚 API Endpoints
+
+### Authentication
+- `POST /auth/signup` - User registration
+- `POST /auth/login` - User login
+- `POST /admin/login` - Admin login
+
+### Chat
+- `POST /chat/create` - Create new chat session
+- `GET /chat/list` - Get all chat sessions
+- `GET /chat/history/:chatId` - Get chat history
+- `POST /chat` - Send message (RAG-based response)
+- `DELETE /chat/:chatId` - Delete chat session
+
+### Disease Detection
+- `POST /chat/disease/create` - Create disease detection session
+- `POST /chat/disease-detect` - Upload image for diagnosis
+- `GET /chat/disease/history/:chatId` - Get diagnosis history
+
+### Admin
+- `POST /upload/pdf` - Upload agricultural reference documents
+
+---
+
+## 🔑 Getting HuggingFace API Key
+
+1. Create a free account at [HuggingFace](https://huggingface.co/)
+2. Go to [Settings > Access Tokens](https://huggingface.co/settings/tokens)
+3. Create a new token with "Read" permissions
+4. Copy the token and add it to your `.env` file
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## 📄 License
+
+This project is open-source and available under the MIT License.
+
+---
+
+## 🙏 Acknowledgments
+
+- **HuggingFace** for providing free inference API
+- **Qwen Team** for the excellent Qwen 2.5 models
+- **Meta** for Llama 3.1 models
+- **LibreTranslate** for open-source translation

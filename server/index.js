@@ -7,7 +7,6 @@ import cors from "cors";
 import mongoose from "mongoose";
 import multer from "multer";
 import { Queue } from "bullmq";
-import OpenAI from "openai";
 import jwt from "jsonwebtoken";
 import { HfInference } from "@huggingface/inference";
 
@@ -35,7 +34,7 @@ mongoose.connect(process.env.MONGODB_URI).catch(() => process.exit(1));
 app.use("/auth", authRoutes);
 app.get("/", (_, res) => res.json({ status: "OK" }));
 
-// Serve uploaded images statically
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const uploadDir = "uploads";
@@ -90,11 +89,6 @@ const queue = new Queue("file-upload-queue", {
   },
 });
 
-const a4fClient = new OpenAI({
-  apiKey: process.env.A4F_API_KEY,
-  baseURL: "https://api.a4f.co/v1",
-});
-
 const hfClient = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
 const embeddings = new HuggingFaceInferenceEmbeddings({
@@ -102,10 +96,18 @@ const embeddings = new HuggingFaceInferenceEmbeddings({
   model: "sentence-transformers/all-MiniLM-L6-v2",
 });
 
-const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
-  url: process.env.QDRANT_URL || "http://localhost:6333",
-  collectionName: "langchainjs-testing",
-});
+let vectorStore;
+try {
+  vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
+    url: process.env.QDRANT_URL || "http://localhost:6333",
+    collectionName: "langchainjs-testing",
+  });
+} catch (error) {
+  vectorStore = new QdrantVectorStore(embeddings, {
+    url: process.env.QDRANT_URL || "http://localhost:6333",
+    collectionName: "langchainjs-testing",
+  });
+}
 
 const retriever = vectorStore.asRetriever({ k: 4 });
 
@@ -125,8 +127,8 @@ Rewrite it as a complete standalone question.
 - Do NOT answer
 `;
 
-  const res = await a4fClient.chat.completions.create({
-    model: "provider-5/gemma-3-27b-it-fast",
+  const res = await hfClient.chatCompletion({
+    model: "meta-llama/Meta-Llama-3.1-8B-Instruct",
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
     max_tokens: 80,
@@ -198,7 +200,7 @@ async function detectDisease(imagePath, message, language) {
   try {
     const imageBuffer = fs.readFileSync(imagePath);
 
-    // Construct prompt based on language
+
     let prompt = `You are an expert plant pathologist and agriculture assistant. Analyze the image and user description to identify any diseases or issues. Provide:
 1. Disease identification (if any)
 2. Severity level
@@ -211,7 +213,7 @@ User query: ${message}`;
       prompt += `\n\nRespond ONLY in ${language}.`;
     }
 
-    // Use HuggingFace Inference API with vision-language model
+
     const response = await hfClient.chatCompletion({
       model: "Qwen/Qwen2.5-VL-7B-Instruct",
       messages: [
@@ -261,10 +263,12 @@ app.post(
   pdfUpload.single("pdf"),
   async (req, res) => {
     try {
+
       await queue.add("file-ready", {
         filename: req.file.originalname,
         path: req.file.path,
       });
+
       res.json({ message: "PDF uploaded" });
     } catch {
       res.status(500).json({ error: "Upload failed" });
@@ -357,7 +361,7 @@ app.get("/chat/history/:chatId", authMiddleware, async (req, res) => {
   }
 });
 
-// Disease Detection Routes
+
 
 app.post("/chat/disease/create", authMiddleware, async (req, res) => {
   try {
@@ -464,7 +468,7 @@ app.post("/chat/disease-detect", authMiddleware, imageUpload.single("image"), as
     });
     await chat.save();
 
-    // Prepare response headers for SSE
+
     res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -472,7 +476,7 @@ app.post("/chat/disease-detect", authMiddleware, imageUpload.single("image"), as
 
     const fullAnswer = await detectDisease(imagePath, message, language);
 
-    // Send the complete response as SSE
+
     res.write(`data: ${JSON.stringify({ content: fullAnswer })}\n\n`);
 
 
@@ -489,7 +493,7 @@ app.post("/chat/disease-detect", authMiddleware, imageUpload.single("image"), as
 
   } catch (error) {
     console.error("Disease detection failed:", error);
-    // Cleanup on error if needed, though we generally want to keep the image if it's already in DB
+
     if (!res.headersSent) {
       res.status(500).json({ error: "Disease detection failed" });
     } else {
@@ -575,16 +579,23 @@ app.post("/chat", authMiddleware, async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    const stream = await a4fClient.chat.completions.create({
-      model: "provider-5/gemma-3-27b-it-fast",
+    const stream = hfClient.chatCompletionStream({
+      model: "Qwen/Qwen2.5-72B-Instruct",
       messages: [
         {
           role: "system",
-          content: `You are an Agriculture Assistant.
-Answer ONLY from the context below.
-If not found, simply state that you don't know based on the provided documents in ${language || "English"}.
+          content: `You are KisanAI, an expert agricultural assistant helping farmers with evidence-based advice.
 
-Reply in ${language || "English"}. Do NOT output English if the target language is different.
+INSTRUCTIONS:
+1. Answer ONLY using information from the Context below - never make up information
+2. If the answer is not in the Context, respond: "I don't have information about this in my knowledge base. Please consult a local agricultural expert."
+3. Provide practical, actionable advice in simple language
+4. Structure your response clearly with:
+   - Direct answer to the question
+   - Step-by-step instructions when applicable
+   - Specific quantities, timings, or measurements when available
+   - Warnings or precautions if relevant
+5. Reply in ${language || "English"}. Do NOT mix languages or output English if a different language is requested.
 
 Context:
 ${context}`,
@@ -593,7 +604,6 @@ ${context}`,
       ],
       temperature: 0.3,
       max_tokens: 500,
-      stream: true,
     });
 
     let fullAnswer = "";
@@ -623,8 +633,13 @@ ${context}`,
       `data: ${JSON.stringify({ sources, title: chat.title, done: true })}\n\n`
     );
     res.end();
-  } catch {
-    res.status(500).json({ error: "Chat failed" });
+  } catch (error) {
+    console.error("[Backend] Chat Error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Chat failed" });
+    } else {
+      res.end();
+    }
   }
 });
 
@@ -674,12 +689,11 @@ Reply in ${language || "English"}. Be specific and practical.
 
 User question: ${message || "What disease is this?"}`;
 
-      const stream = await a4fClient.chat.completions.create({
-        model: "provider-5/gemma-3-27b-it-fast",
+      const stream = hfClient.chatCompletionStream({
+        model: "Qwen/Qwen2.5-72B-Instruct",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 600,
-        stream: true,
       });
 
       let fullAnswer = "";
@@ -696,7 +710,7 @@ User question: ${message || "What disease is this?"}`;
         try {
           fullAnswer = await translateFromEnglish(fullAnswer, language);
         } catch (error) {
-          // Keep English response if translation fails
+
         }
       }
 

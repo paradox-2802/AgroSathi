@@ -13,10 +13,18 @@ const embeddings = new HuggingFaceInferenceEmbeddings({
   model: "sentence-transformers/all-MiniLM-L6-v2",
 });
 
-const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
-  url: process.env.QDRANT_URL || "http://localhost:6333",
-  collectionName: "langchainjs-testing",
-});
+let vectorStore;
+try {
+  vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
+    url: process.env.QDRANT_URL || "http://localhost:6333",
+    collectionName: "langchainjs-testing",
+  });
+} catch (error) {
+  vectorStore = new QdrantVectorStore(embeddings, {
+    url: process.env.QDRANT_URL || "http://localhost:6333",
+    collectionName: "langchainjs-testing",
+  });
+}
 
 const worker = new Worker(
   "file-upload-queue",
@@ -27,9 +35,11 @@ const worker = new Worker(
       throw new Error("Invalid or missing PDF path");
     }
 
+
     const fileBuffer = fs.readFileSync(path);
     const loader = new PDFLoader(new Blob([fileBuffer]), { splitPages: true });
     const docs = await loader.load();
+
 
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
@@ -37,6 +47,7 @@ const worker = new Worker(
     });
 
     const splitDocs = await splitter.splitDocuments(docs);
+
 
     const enrichedDocs = splitDocs.map((doc) => ({
       ...doc,
@@ -49,13 +60,21 @@ const worker = new Worker(
     }));
 
     const batchSize = 50;
-    for (let i = 0; i < enrichedDocs.length; i += batchSize) {
-      await vectorStore.addDocuments(enrichedDocs.slice(i, i + batchSize));
+    try {
+      for (let i = 0; i < enrichedDocs.length; i += batchSize) {
+
+        await vectorStore.addDocuments(enrichedDocs.slice(i, i + batchSize));
+      }
+
+    } catch (e) {
+      console.error(`[Worker] Qdrant Error:`, e);
+      throw e;
     }
 
     try {
       fs.unlinkSync(path);
-    } catch {}
+
+    } catch { }
 
     return { chunks: enrichedDocs.length, filename };
   },
