@@ -1,6 +1,6 @@
-# 🌾 KisanAI — Agriculture Intelligence Platform
+# 🌾 AgroSaarthi — Agriculture Intelligence Platform
 
-**KisanAI** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices.
+**AgroSaarthi** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices.
 
 The platform combines advanced LLMs for text-based queries with vision-language models for disease detection, offering a complete digital companion for modern farming.
 
