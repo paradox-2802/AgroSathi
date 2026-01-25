@@ -3,11 +3,6 @@
 
 **AgroSathi** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices.
 
-# 🌾 AgroSaarthi — Agriculture Intelligence Platform
-
-**AgroSaarthi** is a comprehensive, open-source AI-powered agriculture assistance platform built using Retrieval-Augmented Generation (RAG). It empowers farmers with accurate, document-grounded answers to their questions about soil, crops, irrigation, pests, and farming practices.
->>>>>>> 9d7a2587bc5ac47b24fdbbf7dc8cc4b068802a47
-
 The platform combines advanced LLMs for text-based queries with vision-language models for disease detection, offering a complete digital companion for modern farming.
 
 ---
