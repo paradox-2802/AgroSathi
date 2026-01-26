@@ -68,3 +68,15 @@ services:
       - VITE_API_BASE=http://localhost:8000
     depends_on:
       - backend
+
+  # -------- RSS SERVICE --------
+  rss-service:
+    build: ./rss-service
+    container_name: rss-service
+    command: npm start
+    volumes:
+      - ./rss-service:/app
+      - /app/node_modules
+    env_file:
+      - ./rss-service/.env
+    restart: unless-stopped

@@ -7,6 +7,8 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminUpload from "./pages/AdminUpload";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 
+import Notices from "./pages/Notices";
+
 function ProtectedRoute({ children }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
   return children;
@@ -34,6 +36,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Chatbot />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notices"
+          element={
+            <ProtectedRoute>
+              <Notices />
             </ProtectedRoute>
           }
         />

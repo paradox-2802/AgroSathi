@@ -23,7 +23,8 @@ import {
   Sprout,
   Camera,
   Image as ImageIcon,
-  Globe
+  Globe,
+  Newspaper
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { authFetch, API_BASE } from "../utils/api";
@@ -32,6 +33,7 @@ import { speak, stopSpeaking } from "../utils/tts";
 
 import Sidebar from "../components/chat/Sidebar";
 import WeatherWidget from "../components/chat/WeatherWidget";
+import NoticesWidget from "../components/chat/NoticesWidget";
 
 export default function Chatbot() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -56,6 +58,7 @@ export default function Chatbot() {
   const [userName, setUserName] = useState("User");
   const [diseaseMode, setDiseaseMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showNotices, setShowNotices] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -568,6 +571,12 @@ export default function Chatbot() {
         setShowDailyForecast={setShowDailyForecast}
       />
 
+      <NoticesWidget
+        showNotices={showNotices}
+        setShowNotices={setShowNotices}
+        darkMode={darkMode}
+      />
+
       <Sidebar
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -635,6 +644,17 @@ export default function Chatbot() {
             >
               <BugIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Crop Doctor</span>
+            </button>
+            <button
+              onClick={() => setShowNotices(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm border
+                ${darkMode
+                  ? "bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700"
+                  : "bg-white text-green-700 border-green-100 hover:bg-green-50"
+                }`}
+            >
+              <Newspaper className="w-4 h-4" />
+              <span className="hidden sm:inline">Schemes & News</span>
             </button>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -900,32 +920,46 @@ export default function Chatbot() {
         </div>
 
         <footer
-          className={`p-4 md:p-6 ${darkMode ? "bg-gray-900/50" : "bg-transparent"} relative z-20`}
+          className={`p-4 md:p-6 relative z-20`}
         >
           <div className="max-w-4xl mx-auto">
-            {isListening && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-3 flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 shadow-lg shadow-red-500/10"
-              >
-                <div className="flex gap-1">
-                  {[...Array(4)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-red-500 rounded-full h-4"
-                      style={{
-                        animation: `pulse 0.8s ease-in-out infinite ${i * 0.1
-                          }s`,
-                      }}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-red-600 font-semibold">
-                  Listening... Speak now
-                </span>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {isListening && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                  className="mb-4 flex flex-col items-center justify-center p-4"
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-20" />
+                    <div className={`p-4 rounded-full ${darkMode ? "bg-red-500/20" : "bg-red-100"} relative z-10`}>
+                      <Mic className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+
+                  <div className="h-4 flex items-center justify-center gap-1 mt-4">
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ height: [8, 24, 8] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.8,
+                          ease: "easeInOut",
+                          delay: i * 0.1
+                        }}
+                        className="w-1.5 bg-red-500 rounded-full"
+                      />
+                    ))}
+                  </div>
+
+                  <span className={`mt-2 text-sm font-semibold tracking-wide ${darkMode ? "text-gray-200" : "text-gray-600"}`}>
+                    Listening...
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence>
               {diseaseMode && imagePreview && (
@@ -953,9 +987,9 @@ export default function Chatbot() {
               )}
             </AnimatePresence>
 
-            <div className={`p-1.5 flex gap-1.5 sm:gap-2 rounded-[1.5rem] shadow-2xl transition-all border ${darkMode
-              ? "bg-gray-800 border-gray-700 shadow-black/20"
-              : "bg-white border-white/60 shadow-green-900/5"
+            <div className={`p-1.5 flex gap-1.5 sm:gap-2 rounded-[1.5rem] shadow-2xl transition-all border glass-input ${darkMode
+              ? "bg-gray-800/60 border-gray-700 shadow-black/20"
+              : "bg-white/70 border-white/60 shadow-green-900/5"
               }`}>
               <div className="relative flex items-center pl-2">
                 <button
@@ -984,7 +1018,7 @@ export default function Chatbot() {
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className={`absolute bottom-full mb-3 left-0 w-48 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 ${darkMode ? "bg-gray-800 border border-gray-700" : "bg-white border border-green-100"
+                        className={`absolute bottom-full mb-3 left-0 w-48 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 glass-card text-left ${darkMode ? "text-white" : "text-gray-800"
                           }`}
                       >
                         <div className="max-h-60 overflow-y-auto p-1 custom-scrollbar">
@@ -998,8 +1032,8 @@ export default function Chatbot() {
                               className={`w-full text-left px-4 py-2.5 text-sm transition rounded-xl ${language === l
                                 ? "text-white bg-gradient-to-r from-green-500 to-emerald-600 font-medium shadow-md"
                                 : darkMode
-                                  ? "text-gray-300 hover:bg-gray-700"
-                                  : "text-gray-600 hover:bg-green-50"
+                                  ? "text-gray-300 hover:bg-gray-700/50"
+                                  : "text-gray-600 hover:bg-green-50/50"
                                 }`}
                             >
                               {l}
@@ -1013,7 +1047,7 @@ export default function Chatbot() {
               </div>
 
 
-              <div className={`w-[1px] my-2 ${darkMode ? "bg-gray-700" : "bg-gray-100"}`} />
+              <div className={`w-[1px] my-2 ${darkMode ? "bg-gray-700" : "bg-gray-400/20"}`} />
 
               <input
                 type="file"
@@ -1042,7 +1076,7 @@ export default function Chatbot() {
                 onKeyDown={(e) =>
                   e.key === "Enter" && !e.shiftKey && handleSubmit()
                 }
-                placeholder="Ask anything about agriculture..."
+                placeholder={isListening ? "Listening..." : "Ask anything about agriculture..."}
                 className={`flex-1 min-w-0 bg-transparent px-2 sm:px-3 py-3 text-sm sm:text-base focus:outline-none ${darkMode
                   ? "text-gray-100 placeholder-gray-500"
                   : "text-gray-800 placeholder-gray-400"

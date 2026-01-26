@@ -2,11 +2,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import fs from "fs";
-import { Worker } from "bullmq";
+import { Worker, Queue } from "bullmq";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+
+const REDIS_CONNECTION = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: Number(process.env.REDIS_PORT || 6379),
+};
 
 const embeddings = new HuggingFaceInferenceEmbeddings({
   apiKey: process.env.HUGGINGFACE_API_KEY,
@@ -26,28 +31,19 @@ try {
   });
 }
 
-const worker = new Worker(
+// DOC PROCESSING WORKER
+const fileWorker = new Worker(
   "file-upload-queue",
   async (job) => {
     const { path, filename, userId } = job.data || {};
-
-    if (!path || !fs.existsSync(path)) {
-      throw new Error("Invalid or missing PDF path");
-    }
-
+    if (!path || !fs.existsSync(path)) throw new Error("Invalid or missing PDF path");
 
     const fileBuffer = fs.readFileSync(path);
     const loader = new PDFLoader(new Blob([fileBuffer]), { splitPages: true });
     const docs = await loader.load();
 
-
-    const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-    });
-
+    const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
     const splitDocs = await splitter.splitDocuments(docs);
-
 
     const enrichedDocs = splitDocs.map((doc) => ({
       ...doc,
@@ -62,37 +58,27 @@ const worker = new Worker(
     const batchSize = 50;
     try {
       for (let i = 0; i < enrichedDocs.length; i += batchSize) {
-
         await vectorStore.addDocuments(enrichedDocs.slice(i, i + batchSize));
       }
-
     } catch (e) {
       console.error(`[Worker] Qdrant Error:`, e);
       throw e;
     }
 
-    try {
-      fs.unlinkSync(path);
-
-    } catch { }
-
+    try { fs.unlinkSync(path); } catch { }
     return { chunks: enrichedDocs.length, filename };
   },
-  {
-    concurrency: 2,
-    connection: {
-      host: process.env.REDIS_HOST || "localhost",
-      port: Number(process.env.REDIS_PORT || 6379),
-    },
-  }
+  { concurrency: 2, connection: REDIS_CONNECTION }
 );
 
+
 process.on("SIGINT", async () => {
-  await worker.close();
+  await fileWorker.close();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  await worker.close();
+  await fileWorker.close();
   process.exit(0);
 });
+

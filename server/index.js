@@ -21,6 +21,8 @@ import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import uploadRoutes from "./routes/upload.js";
 import chatRoutes from "./routes/chat.js";
+import diseaseRoutes from "./routes/disease.js";
+import noticeRoutes from "./routes/noticeRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,11 +50,17 @@ app.get("/uploads/images/:filename", (req, res) => {
   });
 });
 
-// App Routes
+// API Routes
+// Authentication routes for user signup/login
 app.use("/auth", authRoutes);
+// Admin authentication and management
 app.use("/admin", adminRoutes);
+// PDF document upload for RAG knowledge base
 app.use("/upload", uploadRoutes);
+// Main chat routes (includes disease detection sub-routes)
 app.use("/chat", chatRoutes);
+// Government schemes and agricultural news notices
+app.use("/api/notices", noticeRoutes);
 
 // Error handling for Multer
 import multer from "multer";
@@ -68,5 +76,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  // Server started successfully
+  console.log(`✅ AgroSathi Server running on port ${PORT}`);
 });

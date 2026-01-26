@@ -23,7 +23,17 @@ The platform combines advanced LLMs for text-based queries with vision-language 
 ### 🌐 **Multilingual Support**
 -   **Real-Time Translation**: Seamlessly translates queries and responses between English and Indian languages using **LibreTranslate**.
 -   **Supported Languages**: Hindi, Bengali, Tamil, Telugu, Marathi, Kannada, Malayalam, Gujarati, Punjabi, and Urdu.
--   **Voice Input**: Supports speech-to-text for accessible interaction in native languages.
+-   **Voice Input**: Supports speech-to-text for accessible interaction in native languages with visual waveform feedback.
+
+### 🌤️ **Real-Time Weather Integration**
+-   **Location-Based Forecast**: Displays current temperature, humidity, wind speed, and rain probability using **Open-Meteo API**.
+-   **7-Day Forecast**: Provides detailed daily weather predictions to help farmers plan agricultural activities.
+-   **Premium UI**: Features glassmorphism design with smooth animations and dark mode support.
+
+### 📰 **Agricultural News & Schemes**
+-   **RSS Feed Aggregation**: Automatically fetches and summarizes government schemes and agricultural news.
+-   **AI-Powered Summaries**: Uses LLM to generate concise, farmer-friendly summaries of complex notices.
+-   **Scheduled Updates**: Background service runs every 12 hours to keep information fresh.
 
 ### 🔐 **Secure & Robust Architecture**
 -   **Authentication**: Secure JWT-based login for Users and Admins.
@@ -47,12 +57,18 @@ graph TD
         Server <-->|Store History| Mongo[("MongoDB")]
         Server <-->|Vector Search| Qdrant[("Qdrant Vector DB")]
         Server <-->|Job Queue| Redis[("Redis")]
+        RSS["RSS Service"] -->|Store Notices| Mongo
     end
     
     subgraph AI Services
         Server <-->|LLM & Vision| HF["HuggingFace Inference"]
         Server <-->|Embeddings| HF_Embed["HuggingFace Embeddings"]
         Server <-->|Translation| Libre["LibreTranslate"]
+        RSS -->|Summarize| HF
+    end
+    
+    subgraph External APIs
+        Client -->|Weather Data| Weather["Open-Meteo API"]
     end
 ```
 
@@ -102,14 +118,21 @@ sequenceDiagram
 
 ### Backend (`server/`)
 -   **`config/`**: Database, AI, and Queue configuration.
--   **`controllers/`**: Request handling logic (`chatController`, `diseaseController`, etc.).
+-   **`controllers/`**: Request handling logic (`chatController`, `diseaseController`, `noticeController`, etc.).
 -   **`routes/`**: API route definitions mapping to controllers.
 -   **`services/`**: Business logic helpers (`aiService`, `visionService`, `translationService`).
--   **`utils/`**: Shared utilities (`response` helpers, etc.).
+-   **`utils/`**: Shared utilities (`response` helpers, `multer` config).
+-   **`middleware/`**: Authentication and authorization middleware.
 
 ### Frontend (`client/`)
--   **`src/components/`**: Reusable UI components (`Sidebar`, `WeatherWidget`).
--   **`src/pages/`**: Main application views (`Chatbot.jsx`).
+-   **`src/components/`**: Reusable UI components (`Sidebar`, `WeatherWidget`, `NoticesWidget`).
+-   **`src/pages/`**: Main application views (`Chatbot.jsx`, `Login.jsx`, `AdminUpload.jsx`).
+-   **`src/utils/`**: Client-side utilities (API helpers, auth, text-to-speech).
+
+### RSS Service (`rss-service/`)
+-   **`jobs/`**: Scheduled RSS feed processing logic.
+-   **`services/`**: RSS parsing and AI summarization services.
+-   **`config/`**: Database connection for storing notices.
 
 ---
 
@@ -129,6 +152,7 @@ sequenceDiagram
 -   **Vector Database**: [Qdrant](https://qdrant.tech/)
 -   **Queue System**: [BullMQ](https://docs.bullmq.io/) with [Redis](https://redis.io/)
 -   **AI Framework**: [LangChain](https://js.langchain.com/)
+-   **RSS Parsing**: [rss-parser](https://www.npmjs.com/package/rss-parser)
 
 ### **AI & Models**
 -   **Chat LLM**: **Qwen 2.5 72B Instruct** (via [HuggingFace Inference](https://huggingface.co/))
@@ -231,9 +255,46 @@ docker-compose down
 ### Admin
 - `POST /upload/pdf` - Upload agricultural reference documents
 
+### Notices
+- `GET /api/notices` - Get paginated agricultural news and schemes
+  - Query params: `page`, `limit`, `type` (GOVERNMENT | AGRI_NEWS)
+
 ---
 
-## 🔑 Getting HuggingFace API Key
+## � Production Deployment
+
+### Environment Configuration
+Ensure all environment variables are properly set:
+- `HUGGINGFACE_API_KEY` - Required for AI models
+- `JWT_SECRET` & `ADMIN_JWT_SECRET` - Use strong, unique secrets
+- `MONGODB_URI` - Production MongoDB connection string
+- `QDRANT_URL` - Qdrant vector database URL
+- `REDIS_HOST` & `REDIS_PORT` - Redis/Valkey configuration
+
+### Build Steps
+```bash
+# Build frontend for production
+cd client
+npm run build
+
+# The build output will be in client/dist
+# Serve it using a static file server or integrate with your backend
+```
+
+### Docker Production
+For production deployment with Docker:
+```bash
+docker-compose -f docker-compose.yml up -d --build
+```
+
+### Health Checks
+- Backend: `GET http://localhost:8000/` should return `{"status":"OK"}`
+- Qdrant: `http://localhost:6333/dashboard`
+- Redis: Use `redis-cli ping`
+
+---
+
+## �🔑 Getting HuggingFace API Key
 
 1. Create a free account at [HuggingFace](https://huggingface.co/)
 2. Go to [Settings > Access Tokens](https://huggingface.co/settings/tokens)

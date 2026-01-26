@@ -1,0 +1,17 @@
+{
+    "name": "rss-service",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Independent service for RSS parsing and summarization",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js"
+    },
+    "dependencies": {
+        "@huggingface/inference": "^2.6.4",
+        "dotenv": "^16.3.1",
+        "mongoose": "^8.0.0",
+        "rss-parser": "^3.13.0"
+    }
+}
