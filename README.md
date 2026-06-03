@@ -16,7 +16,7 @@ The platform combines advanced LLMs for text-based queries with vision-language 
 
 ### 🍃 **Pest & Disease Detection**
 -   **Visual Diagnosis**: Farmers can upload photos of crops to instantly identify diseases.
--   **AI Analysis**: Powered by **Qwen 2.5 VL** (Vision-Language Model), it detects issues with high accuracy.
+-   **AI Analysis**: Powered by **Gemini 2.5 Flash** (via Google AI Studio), it detects issues with high accuracy.
 -   **Actionable Advice**: Provides detailed severity assessments, treatment recommendations, and prevention measures.
 -   **Multilingual Output**: Disease reports are automatically translated into the user's preferred language.
 
@@ -62,6 +62,7 @@ graph TD
     
     subgraph AI Services
         Server <-->|LLM & Vision| HF["HuggingFace Inference"]
+        Server <-->|Vision / Disease Detection| Gemini["Google AI Studio (Gemini 2.5 Flash)"]
         Server <-->|Embeddings| HF_Embed["HuggingFace Embeddings"]
         Server <-->|Translation| Libre["LibreTranslate"]
         RSS -->|Summarize| HF
@@ -102,7 +103,7 @@ sequenceDiagram
 sequenceDiagram
     participant Farmer
     participant Server
-    participant Vision as Vision Model (Qwen 2.5 VL)
+    participant Vision as Vision Model (Gemini 2.5 Flash)
     
     Farmer->>Server: Upload Crop Image
     Server->>Vision: Analyze Image + Prompt
@@ -156,7 +157,7 @@ sequenceDiagram
 
 ### **AI & Models**
 -   **Chat LLM**: **Qwen 2.5 72B Instruct** (via [HuggingFace Inference](https://huggingface.co/))
--   **Vision Model**: **Qwen 2.5 VL 7B Instruct** (via HuggingFace Inference)
+-   **Vision Model**: **Gemini 2.5 Flash** (via [Google AI Studio](https://aistudio.google.com/))
 -   **Query Rewriter**: **Meta-Llama 3.1 8B Instruct** (via HuggingFace Inference)
 -   **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`
 -   **Translation**: [LibreTranslate](https://libretranslate.com/)
@@ -187,6 +188,7 @@ REDIS_PORT=6379
 
 # AI Services
 HUGGINGFACE_API_KEY=your_hf_key_here
+GOOGLE_AI_STUDIO_API_KEY=your_google_ai_studio_key_here
 LIBRETRANSLATE_URL=http://libretranslate:5000
 
 # Auth & Admin
@@ -261,11 +263,12 @@ docker-compose down
 
 ---
 
-## � Production Deployment
+## 🚀 Production Deployment
 
 ### Environment Configuration
 Ensure all environment variables are properly set:
-- `HUGGINGFACE_API_KEY` - Required for AI models
+- `HUGGINGFACE_API_KEY` - Required for chat LLM and embeddings
+- `GOOGLE_AI_STUDIO_API_KEY` - Required for Gemini 2.5 Flash vision model
 - `JWT_SECRET` & `ADMIN_JWT_SECRET` - Use strong, unique secrets
 - `MONGODB_URI` - Production MongoDB connection string
 - `QDRANT_URL` - Qdrant vector database URL
@@ -294,12 +297,19 @@ docker-compose -f docker-compose.yml up -d --build
 
 ---
 
-## �🔑 Getting HuggingFace API Key
+## 🔑 Getting API Keys
 
+### HuggingFace API Key
 1. Create a free account at [HuggingFace](https://huggingface.co/)
 2. Go to [Settings > Access Tokens](https://huggingface.co/settings/tokens)
 3. Create a new token with "Read" permissions
-4. Copy the token and add it to your `.env` file
+4. Copy the token and add it to your `.env` file as `HUGGINGFACE_API_KEY`
+
+### Google AI Studio API Key (for Gemini 2.5 Flash)
+1. Visit [Google AI Studio](https://aistudio.google.com/)
+2. Sign in with your Google account
+3. Go to **Get API Key** and create a new key
+4. Copy the key and add it to your `.env` file as `GOOGLE_AI_STUDIO_API_KEY`
 
 ---
 
@@ -320,4 +330,5 @@ This project is open-source and available under the MIT License.
 - **HuggingFace** for providing free inference API
 - **Qwen Team** for the excellent Qwen 2.5 models
 - **Meta** for Llama 3.1 models
+- **Google** for Gemini 2.5 Flash via AI Studio
 - **LibreTranslate** for open-source translation
