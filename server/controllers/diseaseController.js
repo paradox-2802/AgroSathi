@@ -8,11 +8,6 @@ import DiseaseDetection from "../models/DiseaseDetection.js";
 import { detectDisease } from "../services/visionService.js";
 import { setSSEHeaders, sendError } from "../utils/response.js";
 
-/**
- * Creates a new disease detection chat session
- * @param {Object} req - Express request with authenticated user
- * @param {Object} res - Express response
- */
 export const createDiseaseChat = async (req, res) => {
     try {
         const { chatId, title } = req.body;
@@ -35,11 +30,6 @@ export const createDiseaseChat = async (req, res) => {
     }
 };
 
-/**
- * Lists all disease detection sessions for the user
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const listDiseaseChats = async (req, res) => {
     try {
         const chats = await DiseaseDetection.find(
@@ -60,11 +50,6 @@ export const listDiseaseChats = async (req, res) => {
     }
 };
 
-/**
- * Retrieves chat history for a specific disease detection session
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const getDiseaseHistory = async (req, res) => {
     try {
         const chat = await DiseaseDetection.findOne({
@@ -77,11 +62,6 @@ export const getDiseaseHistory = async (req, res) => {
     }
 };
 
-/**
- * Deletes a disease detection session
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const deleteDiseaseChat = async (req, res) => {
     try {
         const result = await DiseaseDetection.deleteOne({
@@ -99,12 +79,6 @@ export const deleteDiseaseChat = async (req, res) => {
     }
 };
 
-/**
- * Handles image upload and disease detection analysis
- * Streams AI response via SSE
- * @param {Object} req - Express request with file
- * @param {Object} res - Express response
- */
 export const handleDiseaseDetection = async (req, res) => {
     try {
         const { message, chatId, language } = req.body;
@@ -112,7 +86,6 @@ export const handleDiseaseDetection = async (req, res) => {
         const imagePath = req.file?.path;
 
         if (!message || !chatId || !userId || !imagePath) {
-
             if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
             return res.status(400).json({ error: "Invalid request. Image and message are required." });
         }
@@ -127,7 +100,6 @@ export const handleDiseaseDetection = async (req, res) => {
             chat.title = message.length > 50 ? message.substring(0, 50) + "..." : message;
         }
 
-
         const imageUrl = `/uploads/images/${req.file.filename}`;
 
         chat.messages.push({
@@ -135,18 +107,15 @@ export const handleDiseaseDetection = async (req, res) => {
             content: message,
             hasImage: true,
             imagePath: imageUrl,
-            imageDescription: message
+            imageDescription: message,
         });
         await chat.save();
 
         setSSEHeaders(res);
 
-
         const fullAnswer = await detectDisease(imagePath, message, language);
 
-
         res.write(`data: ${JSON.stringify({ content: fullAnswer })}\n\n`);
-
 
         chat.messages.push({
             role: "assistant",
@@ -154,12 +123,9 @@ export const handleDiseaseDetection = async (req, res) => {
         });
         await chat.save();
 
-        res.write(
-            `data: ${JSON.stringify({ title: chat.title, done: true })}\n\n`
-        );
+        res.write(`data: ${JSON.stringify({ title: chat.title, done: true })}\n\n`);
         res.end();
-
-    } catch (error) {
+    } catch {
         sendError(res, 500, "Disease detection failed");
     }
 };

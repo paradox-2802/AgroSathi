@@ -1,18 +1,17 @@
 {
-    "name": "rss-service",
-    "version": "1.0.0",
-    "type": "module",
-    "description": "Independent service for RSS parsing and summarization",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js",
-        "dev": "node --watch index.js"
-    },
-    "dependencies": {
-
-        "dotenv": "^16.3.1",
-        "mongoose": "^8.0.0",
-        "node-cron": "^3.0.3",
-        "rss-parser": "^3.13.0"
-    }
+  "name": "rss-service",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Independent service for RSS parsing and summarization",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.0",
+    "node-cron": "^3.0.3",
+    "rss-parser": "^3.13.0"
+  }
 }

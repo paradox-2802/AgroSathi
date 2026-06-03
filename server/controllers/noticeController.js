@@ -8,7 +8,7 @@ export async function getNotices(req, res) {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const type = req.query.type; // Optional filter: GOVERNMENT | AGRI_NEWS
+        const type = req.query.type;
 
         const query = {};
         if (type) query.source_type = type;
@@ -25,7 +25,7 @@ export async function getNotices(req, res) {
             totalPages: Math.ceil(total / limit),
             currentPage: page,
         });
-    } catch (error) {
+    } catch {
         res.status(500).json({ error: "Failed to fetch notices" });
     }
 }

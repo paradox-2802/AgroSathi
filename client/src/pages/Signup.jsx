@@ -34,7 +34,7 @@ export default function Signup() {
 
       setAuth(data);
       navigate("/");
-    } catch (err) {
+    } catch {
       setError("Server error. Please try again.");
       setLoading(false);
     }

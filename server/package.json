@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^2.7.0",
     "@huggingface/inference": "^4.13.5",
     "@langchain/community": "^0.3.40",
     "@langchain/core": "^0.3.44",

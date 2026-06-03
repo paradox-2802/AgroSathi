@@ -25,7 +25,7 @@ export async function translateToEnglish(text) {
 
         const data = await res.json();
         return data.translatedText || text;
-    } catch (error) {
+    } catch {
         return text;
     }
 }
@@ -70,7 +70,7 @@ export async function translateFromEnglish(text, targetLang) {
 
         const data = await res.json();
         return data.translatedText || text;
-    } catch (error) {
+    } catch {
         return text;
     }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Newspaper, X, Calendar, ExternalLink, Building, Filter } from "lucide-react";
+import { Newspaper, X, Calendar, ExternalLink, Building } from "lucide-react";
 import { authFetch } from "../../utils/api";
 
 export default function NoticesWidget({ showNotices, setShowNotices, darkMode }) {
@@ -71,7 +71,6 @@ export default function NoticesWidget({ showNotices, setShowNotices, darkMode })
                             </button>
                         </div>
 
-                        {/* Filter Tabs */}
                         <div className="flex gap-2 mb-4 flex-shrink-0">
                             {["ALL", "GOVERNMENT", "AGRI_NEWS"].map((f) => (
                                 <button
@@ -89,7 +88,6 @@ export default function NoticesWidget({ showNotices, setShowNotices, darkMode })
                             ))}
                         </div>
 
-                        {/* Content */}
                         <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
                             {loading ? (
                                 <div className="flex flex-col items-center py-10">

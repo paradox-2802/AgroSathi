@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Send,
   Leaf,
   Menu,
   X,
   User,
-  Bot,
   Mic,
   MicOff,
   ChevronDown,
@@ -22,7 +20,6 @@ import {
   Sparkles,
   Sprout,
   Camera,
-  Image as ImageIcon,
   Globe,
   Newspaper
 } from "lucide-react";
@@ -34,6 +31,12 @@ import { speak, stopSpeaking } from "../utils/tts";
 import Sidebar from "../components/chat/Sidebar";
 import WeatherWidget from "../components/chat/WeatherWidget";
 import NoticesWidget from "../components/chat/NoticesWidget";
+
+const withoutMarkdownNode = (props) => {
+  const cleanProps = { ...props };
+  delete cleanProps.node;
+  return cleanProps;
+};
 
 export default function Chatbot() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -249,7 +252,11 @@ export default function Chatbot() {
     if (!confirm("Are you sure you want to delete this chat?")) return;
 
     try {
-      const response = await authFetch(`/chat/${id}`, { method: "DELETE" });
+      const chat = chatHistory.find((c) => c.id === id);
+      const isDisease = chat?.type === "disease";
+      const endpoint = isDisease ? `/chat/disease/${id}` : `/chat/${id}`;
+
+      const response = await authFetch(endpoint, { method: "DELETE" });
       const result = await response.json();
 
       if (!result.success) {
@@ -462,7 +469,9 @@ export default function Chatbot() {
                   );
                 }
               }
-            } catch (e) { }
+            } catch {
+              // Ignore malformed SSE chunks and keep reading the stream.
+            }
           }
         }
       }
@@ -530,7 +539,7 @@ export default function Chatbot() {
               rainChance: daily.precipitation_probability_max[i],
             })),
           });
-        } catch (error) {
+        } catch {
           alert("Failed to fetch weather data.");
         } finally {
           setWeatherLoading(false);
@@ -816,20 +825,20 @@ export default function Chatbot() {
                       )}
                       <ReactMarkdown
                         components={{
-                          p: ({ node, ...props }) => (
-                            <p className="my-2 leading-relaxed" {...props} />
+                          p: (props) => (
+                            <p className="my-2 leading-relaxed" {...withoutMarkdownNode(props)} />
                           ),
-                          ul: ({ node, ...props }) => (
-                            <ul className="my-2 pl-6 list-disc space-y-1" {...props} />
+                          ul: (props) => (
+                            <ul className="my-2 pl-6 list-disc space-y-1" {...withoutMarkdownNode(props)} />
                           ),
-                          ol: ({ node, ...props }) => (
-                            <ol className="my-2 pl-6 list-decimal space-y-1" {...props} />
+                          ol: (props) => (
+                            <ol className="my-2 pl-6 list-decimal space-y-1" {...withoutMarkdownNode(props)} />
                           ),
-                          li: ({ node, ...props }) => (
-                            <li className="my-0.5" {...props} />
+                          li: (props) => (
+                            <li className="my-0.5" {...withoutMarkdownNode(props)} />
                           ),
-                          strong: ({ node, ...props }) => (
-                            <strong className="font-bold" {...props} />
+                          strong: (props) => (
+                            <strong className="font-bold" {...withoutMarkdownNode(props)} />
                           ),
                         }}
                       >

@@ -1,7 +1,6 @@
 /**
  * Chat Controller
  * Handles main chat sessions with RAG (Retrieval-Augmented Generation)
- * Manages conversation history, document retrieval, and LLM streaming
  */
 
 import Chat from "../models/Chat.js";
@@ -11,11 +10,6 @@ import { translateToEnglish, translateFromEnglish } from "../services/translatio
 import { rewriteQuestion } from "../services/aiService.js";
 import { setSSEHeaders, sendError } from "../utils/response.js";
 
-/**
- * Creates a new chat session
- * @param {Object} req - Express request with authenticated user
- * @param {Object} res - Express response
- */
 export const createChat = async (req, res) => {
     try {
         const { chatId, title } = req.body;
@@ -38,17 +32,19 @@ export const createChat = async (req, res) => {
     }
 };
 
-/**
- * Deletes a chat session
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const deleteChat = async (req, res) => {
     try {
-        const result = await Chat.deleteOne({
+        let result = await Chat.deleteOne({
             chatId: req.params.chatId,
             userId: req.user?.id,
         });
+
+        if (result.deletedCount === 0) {
+            result = await DiseaseDetection.deleteOne({
+                chatId: req.params.chatId,
+                userId: req.user?.id,
+            });
+        }
 
         if (result.deletedCount === 0) {
             return res.status(404).json({ success: false, error: "Chat not found" });
@@ -60,11 +56,6 @@ export const deleteChat = async (req, res) => {
     }
 };
 
-/**
- * Lists all chat sessions (normal + disease) for the user
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const listChats = async (req, res) => {
     try {
         const [normalChats, diseaseChats] = await Promise.all([
@@ -99,11 +90,6 @@ export const listChats = async (req, res) => {
     }
 };
 
-/**
- * Retrieves chat history for a specific session
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const getChatHistory = async (req, res) => {
     try {
         const chat = await Chat.findOne({
@@ -116,12 +102,6 @@ export const getChatHistory = async (req, res) => {
     }
 };
 
-/**
- * Handles main chat interaction with RAG
- * Streams AI response via SSE
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- */
 export const handleChat = async (req, res) => {
     try {
         const { message, chatId, language } = req.body;
@@ -253,5 +233,3 @@ ${context}`,
         sendError(res, 500, "Chat failed");
     }
 };
-
-

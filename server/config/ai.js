@@ -1,30 +1,32 @@
 /**
  * AI Configuration
- * Initializes HuggingFace client, embeddings model, and Qdrant vector store
- * Used for RAG (Retrieval-Augmented Generation) document retrieval
+ * Sets up Hugging Face embeddings, Qdrant vector store, and Gemini client
  */
 
-import { InferenceClient } from "@huggingface/inference";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { QdrantVectorStore } from "@langchain/qdrant";
+import { HfInference } from "@huggingface/inference";
+import { GoogleGenAI } from "@google/genai";
 
-// HuggingFace client for LLM and vision models
-export const hfClient = new InferenceClient(process.env.HUGGINGFACE_API_KEY);
+export const hfClient = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
-// Embeddings model for document vectorization
-export const embeddings = new HuggingFaceInferenceEmbeddings({
+export const geminiClient = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+});
+
+const embeddings = new HuggingFaceInferenceEmbeddings({
     apiKey: process.env.HUGGINGFACE_API_KEY,
     model: "sentence-transformers/all-MiniLM-L6-v2",
 });
 
-// Vector store: connects to Qdrant or creates new collection if none exists
 let vectorStore;
+
 try {
     vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
         url: process.env.QDRANT_URL || "http://localhost:6333",
         collectionName: "langchainjs-testing",
     });
-} catch (error) {
+} catch {
     vectorStore = new QdrantVectorStore(embeddings, {
         url: process.env.QDRANT_URL || "http://localhost:6333",
         collectionName: "langchainjs-testing",
@@ -32,5 +34,4 @@ try {
 }
 
 export { vectorStore };
-// Retriever configured to return top 4 most relevant documents
 export const retriever = vectorStore.asRetriever({ k: 4 });

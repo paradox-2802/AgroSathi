@@ -1,14 +1,35 @@
 /**
  * Vision Service
- * Provides plant disease detection using vision-language model
+ * Provides plant disease detection using Gemini 2.5 Flash
  */
 
 import fs from "fs";
-import { hfClient } from "../config/ai.js";
+import { geminiClient } from "../config/ai.js";
+
+/**
+ * Helper function to determine MIME type from file path
+ * @param {string} filePath
+ * @returns {string} MIME type
+ */
+function getMimeType(filePath) {
+    const ext = filePath.split('.').pop().toLowerCase();
+    switch (ext) {
+        case 'png':
+            return 'image/png';
+        case 'gif':
+            return 'image/gif';
+        case 'webp':
+            return 'image/webp';
+        case 'jpg':
+        case 'jpeg':
+        default:
+            return 'image/jpeg';
+    }
+}
 
 /**
  * Analyzes plant image to detect diseases and provide recommendations
- * Uses Qwen vision model with base64-encoded image
+ * Uses Google Gemini 2.5 Flash with base64-encoded image
  * @param {string} imagePath - Path to the uploaded plant image
  * @param {string} message - User's description or question about the plant
  * @param {string} language - Target language for the response
@@ -16,10 +37,10 @@ import { hfClient } from "../config/ai.js";
  * @throws {Error} If image reading or model inference fails
  */
 export async function detectDisease(imagePath, message, language) {
-    try {
-        const imageBuffer = fs.readFileSync(imagePath);
+    const imageBuffer = fs.readFileSync(imagePath);
+    const mimeType = getMimeType(imagePath);
 
-        let prompt = `You are an expert plant pathologist and agriculture assistant. Analyze the image and user description to identify any diseases or issues. Provide:
+    let prompt = `You are an expert plant pathologist and agriculture assistant. Analyze the image and user description to identify any diseases or issues. Provide:
 1. Disease identification (if any)
 2. Severity level
 3. Treatment recommendations
@@ -27,31 +48,27 @@ export async function detectDisease(imagePath, message, language) {
 
 User query: ${message}`;
 
-        if (language && language !== "English") {
-            prompt += `\n\nRespond ONLY in ${language}.`;
-        }
-
-        const response = await hfClient.chatCompletion({
-            model: "Qwen/Qwen2.5-VL-7B-Instruct",
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: prompt },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                url: `data:image/jpeg;base64,${imageBuffer.toString('base64')}`
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens: 1000,
-        });
-
-        return response.choices[0]?.message?.content || "Unable to analyze the image.";
-    } catch (error) {
-        throw error;
+    if (language && language !== "English") {
+        prompt += `\n\nRespond ONLY in ${language}.`;
     }
+
+    const response = await geminiClient.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+            {
+                role: 'user',
+                parts: [
+                    { text: prompt },
+                    {
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: imageBuffer.toString('base64')
+                        }
+                    }
+                ]
+            }
+        ]
+    });
+
+    return response.text || "Unable to analyze the image.";
 }

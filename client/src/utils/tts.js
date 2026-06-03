@@ -65,7 +65,7 @@ export const speak = (text, onEnd) => {
         if (onEnd) onEnd();
     };
 
-    utterance.onerror = (e) => {
+    utterance.onerror = () => {
         if (onEnd) onEnd();
     };
 

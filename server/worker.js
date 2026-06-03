@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import fs from "fs";
-import { Worker, Queue } from "bullmq";
+import { Worker } from "bullmq";
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
@@ -24,14 +24,13 @@ try {
     url: process.env.QDRANT_URL || "http://localhost:6333",
     collectionName: "langchainjs-testing",
   });
-} catch (error) {
+} catch {
   vectorStore = new QdrantVectorStore(embeddings, {
     url: process.env.QDRANT_URL || "http://localhost:6333",
     collectionName: "langchainjs-testing",
   });
 }
 
-// DOC PROCESSING WORKER
 const fileWorker = new Worker(
   "file-upload-queue",
   async (job) => {
@@ -71,7 +70,6 @@ const fileWorker = new Worker(
   { concurrency: 2, connection: REDIS_CONNECTION }
 );
 
-
 process.on("SIGINT", async () => {
   await fileWorker.close();
   process.exit(0);
@@ -81,4 +79,3 @@ process.on("SIGTERM", async () => {
   await fileWorker.close();
   process.exit(0);
 });
-

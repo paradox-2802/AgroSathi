@@ -6,7 +6,6 @@ import Chatbot from "./pages/Chatbot";
 import AdminLogin from "./pages/AdminLogin";
 import AdminUpload from "./pages/AdminUpload";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
-
 import Notices from "./pages/Notices";
 
 function ProtectedRoute({ children }) {
