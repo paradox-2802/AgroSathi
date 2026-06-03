@@ -188,7 +188,7 @@ REDIS_PORT=6379
 
 # AI Services
 HUGGINGFACE_API_KEY=your_hf_key_here
-GOOGLE_AI_STUDIO_API_KEY=your_google_ai_studio_key_here
+GEMINI_API_KEY=your_google_ai_studio_key_here
 LIBRETRANSLATE_URL=http://libretranslate:5000
 
 # Auth & Admin
@@ -268,7 +268,7 @@ docker-compose down
 ### Environment Configuration
 Ensure all environment variables are properly set:
 - `HUGGINGFACE_API_KEY` - Required for chat LLM and embeddings
-- `GOOGLE_AI_STUDIO_API_KEY` - Required for Gemini 2.5 Flash vision model
+- `GEMINI_API_KEY` - Required for Gemini 2.5 Flash vision model
 - `JWT_SECRET` & `ADMIN_JWT_SECRET` - Use strong, unique secrets
 - `MONGODB_URI` - Production MongoDB connection string
 - `QDRANT_URL` - Qdrant vector database URL
@@ -309,7 +309,7 @@ docker-compose -f docker-compose.yml up -d --build
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Sign in with your Google account
 3. Go to **Get API Key** and create a new key
-4. Copy the key and add it to your `.env` file as `GOOGLE_AI_STUDIO_API_KEY`
+4. Copy the key and add it to your `.env` file as `GEMINI_API_KEY`
 
 ---
 
